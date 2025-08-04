@@ -18,4 +18,7 @@ MAAFOcc: Multimodal Adaptive Asymmetric Fusion Based Occupancy Prediction
 |:------:|:-----------------:|:--------------------:|:----------------------:|:-----:|
 | DAOcc  |         √         |         R50          |        256×704         | 54.69 |
 
+## Visualization
+![](figs/occ_show.png)
+
 Comming soon....
