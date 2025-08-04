@@ -28,4 +28,3 @@ MAAFOcc: Multimodal Adaptive Asymmetric Fusion Based Occupancy Prediction
 ## Visualization
 ![](figs/occ_show.png)
 
-Comming soon....
