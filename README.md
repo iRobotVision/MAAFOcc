@@ -18,6 +18,13 @@ MAAFOcc: Multimodal Adaptive Asymmetric Fusion Based Occupancy Prediction
 |:------:|:-----------------:|:--------------------:|:----------------------:|:-----:|
 | DAOcc  |         √         |         R50          |        256×704         | 54.69 |
 
+### 3D Semantic Occupancy Prediction on [SurroundOcc](https://github.com/weiyithu/SurroundOcc)
+
+| Method | Image <br/> Backbone | Image <br/> Resolution | IoU  | mIoU |
+|:------:|:--------------------:|:----------------------:|:----:|:----:|
+| DAOcc  |         R50          |        256×704         | 46.4 | 31.0 | 
+
+
 ## Visualization
 ![](figs/occ_show.png)
 
