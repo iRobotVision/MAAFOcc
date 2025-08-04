@@ -14,9 +14,12 @@ MAAFOcc: Multimodal Adaptive Asymmetric Fusion Based Occupancy Prediction
 
 ### 3D Semantic Occupancy Prediction on [Occ3D-nuScenes](https://github.com/Tsinghua-MARS-Lab/Occ3D)
 
-| Method | Camera <br/> Mask | Image <br/> Backbone | Image <br/> Resolution | mIoU  |
-|:------:|:-----------------:|:--------------------:|:----------------------:|:-----:|
-| MAAFOcc  |         √         |         R50          |        256×704         | 54.69 |
+| Method | Image <br/> Backbone | Image <br/> Resolution | mIoU  |
+|:------:|:--------------------:|:----------------------:|:-----:|
+| HyDra  |        R50          |        256×704         | 44.40 |
+| EFFOcc  |         Swin-B          |        512×1408        | 52.62 |
+| DAOcc  |         R50          |        256×704         | 53.82 |
+| MAAFOcc |         R50          |        256×704         | 54.69 |
 
 ### 3D Semantic Occupancy Prediction on [SurroundOcc](https://github.com/weiyithu/SurroundOcc)
 
