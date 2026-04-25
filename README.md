@@ -73,7 +73,10 @@ torchpack dist-run -np 8 python tools/test.py PATH_TO_CONFIG PATH_TO_WEIGHT --di
 Evaluate MAAFOcc with single GPU:
 ```shell
 python tools/test.py PATH_TO_CONFIG PATH_TO_WEIGHT
+```
 
 ## 🤗 Acknowledgement
 * Our work benefits from [DAOcc](https://github.com/AlphaPlusTT/DAOcc) in the training, testing and deployment pipeline—special thanks to the authors for their great contribution!
+
+
 
