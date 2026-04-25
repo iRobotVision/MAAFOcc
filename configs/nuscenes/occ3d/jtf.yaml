@@ -1,0 +1,315 @@
+voxel_size: [0.075, 0.075, 0.2]
+point_cloud_range: [-54.0, -54.0, -5.0, 54.0, 54.0, 3.0]
+
+augment3d:
+  scale: [1., 1.]
+  rotate: [-0., 0.]
+  translate: 0.
+
+
+
+model:
+  type: BEVFusion
+  encoders:
+    lidar:
+      voxelize:
+        max_num_points: 10
+        point_cloud_range: ${point_cloud_range}
+        voxel_size: ${voxel_size}
+        max_voxels: [ 120000, 160000 ]
+      backbone:
+        type: SparseEncoder
+        in_channels: 5
+        sparse_shape: [ 1440, 1440, 41 ]
+        output_channels: 128
+        order:
+          - conv
+          - norm
+          - act
+        encoder_channels:
+          - [ 16, 16, 32 ]
+          - [ 32, 32, 64 ]
+          - [ 64, 64, 128 ]
+          - [ 128, 128 ]
+        encoder_paddings:
+          - [ 0, 0, 1 ]
+          - [ 0, 0, 1 ]
+          - [ 0, 0, [ 1, 1, 0 ] ]
+          - [ 0, 0 ]
+        block_type: basicblock
+    camera:
+      backbone:
+        type: ResNet
+        depth: 50
+        out_indices: [1, 2, 3]
+        # with_cp: true
+        init_cfg:
+          type: Pretrained
+          checkpoint: https://download.pytorch.org/models/resnet50-0676ba61.pth
+        # type: SwinTransformer
+        # embed_dims: 96
+        # depths: [2, 2, 6, 2]
+        # num_heads: [3, 6, 12, 24]
+        # window_size: 7
+        # mlp_ratio: 4
+        # qkv_bias: true
+        # qk_scale: null
+        # drop_rate: 0.
+        # attn_drop_rate: 0.
+        # drop_path_rate: 0.2
+        # patch_norm: true
+        # out_indices: [1, 2, 3]
+        # with_cp: false
+        # convert_weights: true
+        # init_cfg:
+        #   type: Pretrained
+        #   checkpoint: https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_tiny_patch4_window7_224.pth
+      neck:
+        type: GeneralizedLSSFPN
+        in_channels: [512, 1024, 2048]
+        # in_channels: [192, 384, 768]
+        out_channels: 256
+        start_level: 0
+        num_outs: 3
+        norm_cfg:
+          type: BN2d
+          requires_grad: true
+        act_cfg:
+          type: ReLU
+          inplace: true
+        upsample_cfg:
+          mode: bilinear
+          align_corners: false
+      vtransform:
+        type: DepthLSSTransform
+        in_channels: 256
+        out_channels: 80
+        image_size: ${image_size}
+        feature_size: ${[image_size[0] // 8, image_size[1] // 8]}
+        xbound: [-54.0, 54.0, 0.3]
+        ybound: [-54.0, 54.0, 0.3]
+        zbound: [-5.0, 3.0, 8.0]
+        dbound: [1.0, 60.0, 0.5]
+        downsample: 2
+        
+  fuser:
+    type: JTK
+    in_channels: [80, 256]
+    # mid_planes: [ 336, 128, 256 ]
+    out_channels: 512
+
+  decoder:
+    backbone:
+      type: CustomResNet
+      stride: [1, 1, 2]
+      numC_input : 512
+      num_channels: [128, 256, 512]
+    neck:
+      type: FPN_LSS
+      in_channels: 640
+      out_channels: 512
+      scale_factor: 2
+      extra_upsample: null
+    # backbone:
+    #   type: SECOND
+    #   in_channels: 256
+    #   out_channels: [128, 256]
+    #   layer_nums: [5, 5]
+    #   layer_strides: [1, 2]
+    #   norm_cfg:
+    #     type: BN
+    #     eps: 1.0e-3
+    #     momentum: 0.01
+    #   conv_cfg:
+    #     type: Conv2d
+    #     bias: false
+    # neck:
+    #   type: SECONDFPN
+    #   in_channels: [128, 256]
+    #   out_channels: [256, 256]
+    #   upsample_strides: [1, 2]
+    #   norm_cfg:
+    #     type: BN
+    #     eps: 1.0e-3
+    #     momentum: 0.01
+    #   upsample_cfg:
+    #     type: deconv
+    #     bias: false
+    #   use_conv_for_no_stride: true
+  heads:
+    # map:
+    #   type: BEVSegmentationHead
+    #   in_channels: 512
+    #   grid_transform:
+    #     input_scope: [[-51.2, 51.2, 0.8], [-51.2, 51.2, 0.8]]
+    #     output_scope: [[-50, 50, 0.5], [-50, 50, 0.5]]
+    #   classes: ['drivable_area', 'ped_crossing', 'walkway', 'stop_line', 'carpark_area', 'divider']
+    #   loss: focal
+    object: 
+      type: CenterHead
+      in_channels: 512
+      train_cfg:
+        point_cloud_range: ${point_cloud_range}
+        grid_size: [ 1440, 1440, 41 ]
+        voxel_size: ${voxel_size}
+        out_size_factor: 8
+        dense_reg: 1
+        gaussian_overlap: 0.1
+        max_objs: 500
+        min_radius: 2
+        code_weights: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2 ]
+      test_cfg:
+        post_center_limit_range: [ -61.2, -61.2, -10.0, 61.2, 61.2, 10.0 ]
+        max_per_img: 500
+        max_pool_nms: false
+        min_radius: [ 4, 12, 10, 1, 0.85, 0.175 ]
+        score_threshold: 0.1
+        out_size_factor: 8
+        voxel_size: ${voxel_size[:2]}
+        nms_type:
+          - circle
+          - rotate
+          - rotate
+          - circle
+          - rotate
+          - rotate
+        nms_scale:
+          - [ 1.0 ]
+          - [ 1.0, 1.0 ]
+          - [ 1.0, 1.0 ]
+          - [ 1.0 ]
+          - [ 1.0, 1.0 ]
+          - [ 2.5, 4.0 ]
+        pre_max_size: 1000
+        post_max_size: 83
+        nms_thr: 0.2
+      tasks:
+        - [ "car" ]
+        - [ "truck", "construction_vehicle" ]
+        - [ "bus", "trailer" ]
+        - [ "barrier" ]
+        - [ "motorcycle", "bicycle" ]
+        - [ "pedestrian", "traffic_cone" ]
+      common_heads:
+        reg: [ 2, 2 ]
+        height: [ 1, 2 ]
+        dim: [ 3, 2 ]
+        rot: [ 2, 2 ]
+        vel: [ 2, 2 ]
+      share_conv_channel: 64
+      bbox_coder:
+        type: CenterPointBBoxCoder
+        pc_range: ${point_cloud_range}
+        post_center_range: [ -61.2, -61.2, -10.0, 61.2, 61.2, 10.0 ]
+        max_num: 500
+        score_threshold: 0.1
+        out_size_factor: 8
+        voxel_size: ${voxel_size[:2]}
+        code_size: 9
+      separate_head:
+        type: SeparateHead
+        init_bias: -2.19
+        final_kernel: 3
+      loss_cls:
+        type: GaussianFocalLoss
+        reduction: mean
+      loss_bbox:
+        type: L1Loss
+        reduction: mean
+        loss_weight: 0.25
+      norm_bbox: true
+    occ: 
+      type: BEVOCCHead2D
+      # type: HeightAwareOccupancyHead
+      in_dim: 128
+      out_dim: 128
+      Dz: 16
+      use_mask: true  # true
+      num_classes: 18
+      use_predicter: true
+      class_balance: false
+      loss_occ:
+        type: CrossEntropyLoss
+        use_sigmoid: false
+        ignore_index: 255
+        loss_weight: 1.0
+      coordinate_transform:
+        type: CrossCoordinateSample
+        point_range: [-40., 40., -40., 40., 0., 0.]
+        point_num: [200, 200, 1]
+        lidar_point_range: [-54.0, 54.0, -54.0, 54.0]
+        in_dim: 512
+        out_dim: 128
+  loss_scale:
+    object: 0.01
+    occ: 1.0
+    map: 1.0
+
+optimizer:
+  type: AdamW
+  lr: 5.6e-5 
+  weight_decay: 0.01
+
+optimizer_config:
+  grad_clip:
+    max_norm: 35
+    norm_type: 2
+
+lr_config:
+  # policy: CosineAnnealing
+  # warmup: linear
+  # warmup_iters: 500
+  # warmup_ratio: 0.33333333
+  # min_lr_ratio: 1.0e-3
+  policy: cyclic
+
+
+fp16:
+  loss_scale: 
+    growth_interval: 2000
+
+max_epochs: 20
+
+data:
+  samples_per_gpu: 4
+  workers_per_gpu: 4
+  train:
+    type: CBGSDataset
+    dataset:
+      type: ${dataset_type}
+      dataset_root: ${dataset_root}
+      ann_file: ${dataset_root + "nuscenes_infos_train_w_3occ.pkl"}
+      pipeline: ${train_pipeline}
+      object_classes: ${object_classes}
+      modality: ${input_modality}
+      test_mode: false
+      use_valid_flag: true
+      box_type_3d: LiDAR
+      data_type: ${occ_data_type}
+  val:
+    type: ${dataset_type}
+    dataset_root: ${dataset_root}
+    ann_file: ${dataset_root + "nuscenes_infos_val_w_3occ.pkl"}
+    pipeline: ${test_pipeline}
+    object_classes: ${object_classes}
+    modality: ${input_modality}
+    test_mode: true
+    box_type_3d: LiDAR
+    data_type: ${occ_data_type}
+  test:
+    type: ${dataset_type}
+    dataset_root: ${dataset_root}
+    ann_file: ${dataset_root + "nuscenes_infos_val_w_3occ.pkl"}
+    pipeline: ${test_pipeline}
+    object_classes: ${object_classes}
+    modality: ${input_modality}
+    test_mode: true
+    box_type_3d: LiDAR
+    data_type: ${occ_data_type}
+
+evaluation:
+  interval: 2
+  pipeline: ${test_pipeline}
+
+
+find_unused_parameters: false
